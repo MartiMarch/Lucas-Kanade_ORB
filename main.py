@@ -1,11 +1,23 @@
 """
     Aplicación del algoritmo de Lucas-Kanade. Gracias al flujo óptico se puede detectar el movimiento.
-    Combinado con ORB es posible desplazar la cámar evitando falsos positivos.
+    Combinado con ORB es posible desplazar la cámar evitando falsos positivos. Se divide la imagen en cuatro
+    imágenes para poder distribuir los puntos clave un poco más uniformemente.
 """
 import cv2
 import numpy as np
+import time
 
-# Funcion utilizada para dividir en cuatro la imagen
+""" procesarEsquinasInicialesSubimagen
+
+    Función utilizada para dividir en cuatro la imagen.
+
+    [In]    imagen: imagen tomada como referencia.
+    [In]    x1: punto x inicial sobre el que se empieza la subdivision de la imagen
+    [In]    x2: punto x final sobre el que se empieza la subdivision de la imagen
+    [In]    y1: punto y inicial sobre el que se empieza la subdivision de la imagen
+    [In]    y2: punto y final sobre el que se empieza la subdivision de la imagen
+    [Out]   Puntos clave que se utilizaran para comparar los puntos clave actuales.
+"""
 def procesarEsquinasInicialesSubimagen(imagen, x1, x2, y1, y2):
     subimagen = imagen[x1:x2, y1:y2]
     esquinasIniciales = orb.detect(subimagen, mask=None)
@@ -17,17 +29,37 @@ def procesarEsquinasInicialesSubimagen(imagen, x1, x2, y1, y2):
     esquinasIniciales = np.asarray(esquinasIniciales)
     return esquinasIniciales
 
-# Funcion usada para crear subimagenes
-def obtenerSubimagen(imagen, x1, x2, y1, y2):
-    return imagen[x1:x2, y1:y2]
-
-# Se dibuja el flujo óptico
-def dibujarFlujoOptico(buenasNuevasEsquinas, buenasEsquinasIniciales, x1, x2, y1, y2, imagen, primeraImagen):
+""" dibujarFlujoOptico
+    
+    Función utilizada para dibujar el flujo óptico.
+    
+    [In]    buenasNuevasEsquinas: son los nuevos puntos claves actualizados.
+    [In]    buenasEsquinasIniciales: son los puntos clave iniciales.
+    [In]    x1: punto x inicial sobre el que se empieza la subdivision de la imagen
+    [In]    x2: punto x final sobre el que se empieza la subdivision de la imagen
+    [In]    y1: punto y inicial sobre el que se empieza la subdivision de la imagen
+    [In]    y2: punto y final sobre el que se empieza la subdivision de la imagen
+    [In]    imagen: imagen que se ha consumido de la cámara
+    [In]    primeraImagen: imagen de referencia sobre la que se comparará la imagen consumida
+    [Out]   Subimagen de la imagen original con el flujo óptico dibujado
+    [Out]   Máscara que hay que aplicar sobre la subimagen
+"""
+def dibujarFlujoOptico(buenasNuevasEsquinas, buenasEsquinasIniciales, imagen):
     for i, (new, old) in enumerate(zip(buenasNuevasEsquinas, buenasEsquinasIniciales)):
         a, b = new.ravel()
         c, d = old.ravel()
-        mask = cv2.line(np.zeros_like(primeraImagen[x1:x2, y1:y2]), (a, b), (c, d), color[i].tolist(), 2)
-        return cv2.circle(imagen[x1:x2, y1:y2], (a, b), 5, color[i].tolist(), -1), mask
+        mask = cv2.line(np.zeros_like(imagen), (a, b), (c, d), color[i].tolist(), 2)
+        subimagenDibujada = cv2.circle(imagen, (a, b), 5, color[i].tolist(), -1)
+        return [subimagenDibujada, mask]
+
+""" getTime
+
+    Función utilizada para conocer el tiempo actual en milisegundos.
+    
+    [Out]   Tiempo actual en milisegundos
+"""
+def getTime():
+    return round(time.time() * 1000)
 
 # Se abre la cámara
 camara = cv2.VideoCapture(2, cv2.CAP_DSHOW)
@@ -37,6 +69,12 @@ _, primeraImagen = camara.read()
 
 # Se transforma a gris
 primeraImagenGris = cv2.cvtColor(primeraImagen, cv2.COLOR_BGR2GRAY)
+
+# Se subdivide la primera imagen en fris en cuatro partes
+primeraImagenGris1 = primeraImagenGris[0:int(primeraImagenGris.shape[0]/2), 0:int(primeraImagenGris.shape[1]/2)]
+primeraImagenGris2 = primeraImagenGris[0:int(primeraImagenGris.shape[0]/2), int(primeraImagenGris.shape[1]/2):int(primeraImagenGris.shape[1])]
+primeraImagenGris3 = primeraImagenGris[int(primeraImagenGris.shape[0]/2):int(primeraImagenGris.shape[0]), 0:int(primeraImagenGris.shape[1]/2)]
+primeraImagenGris4 = primeraImagenGris[int(primeraImagenGris.shape[0]/2):int(primeraImagenGris.shape[0]), int(primeraImagenGris.shape[1]/2):int(primeraImagenGris.shape[1])]
 
 # Se crea un orb
 orb = cv2.ORB_create(100)
@@ -50,12 +88,27 @@ esquinasIniciales4 = procesarEsquinasInicialesSubimagen(primeraImagenGris, int(p
 # Se trata de un vector que representa un color aleatorio
 color = np.random.randint(0, 255, (100, 3))
 
+# Tiempo en el que se tomo la primera imagen de referencia
+tiempoInicial = getTime()
+
 while True:
     # Se van leyendo imágenes
     _, imagen = camara.read()
 
+    # Se convierte la imagen original en subimagenes
+    imagen1 = imagen[0:int(imagen.shape[0]/2), 0:int(imagen.shape[1]/2)]
+    imagen2 = imagen[0:int(imagen.shape[0]/2), int(imagen.shape[1]/2):int(imagen.shape[1])]
+    imagen3 = imagen[int(imagen.shape[0]/2):int(imagen.shape[0]), 0:int(imagen.shape[1]/2)]
+    imagen4 = imagen[int(imagen.shape[0]/2):int(imagen.shape[0]), int(imagen.shape[1]/2):int(imagen.shape[1])]
+
     # Convertimos el frame a gris
     imagenGris = cv2.cvtColor(imagen, cv2.COLOR_BGR2GRAY)
+
+    # Se extraen cuatro subimágenes de la imagen gris
+    imagenGris1 = imagenGris[0:int(imagen.shape[0]/2), 0:int(imagen.shape[1]/2)]
+    imagenGris2 = imagenGris[0:int(imagen.shape[0]/2), int(imagen.shape[1]/2):int(imagen.shape[1])]
+    imagenGris3 = imagenGris[int(imagen.shape[0]/2):int(imagen.shape[0]), 0:int(imagen.shape[1]/2)]
+    imagenGris4 = imagenGris[int(imagen.shape[0]/2):int(imagen.shape[0]), int(imagen.shape[1]/2):int(imagen.shape[1])]
 
     """
         (https://docs.opencv.org/master/dc/d6b/group__video__track.html#ga473e4b886d0bcc6b65831eb88ed93323)
@@ -85,43 +138,12 @@ while True:
 
         - 3: Cada punto clave tiene un margen de error cuando se calcula el flujo óptico.
     """
-    nuevasEsquinas1, estatus1, errores1 = cv2.calcOpticalFlowPyrLK(primeraImagenGris[
-                                                                    0:int(primeraImagenGris.shape[0]/2),
-                                                                    0:int(primeraImagenGris.shape[1]/2)
-                                                                   ],
-                                                                   imagenGris[
-                                                                    0:int(imagenGris.shape[0]/2),
-                                                                    0:int(imagenGris.shape[1]/2)
-                                                                   ],
-                                                                   esquinasIniciales1, None, winSize=(15, 15), maxLevel=2, criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
-    nuevasEsquinas2, estatus2, errores2 = cv2.calcOpticalFlowPyrLK(primeraImagenGris[
-                                                                    0:int(primeraImagenGris.shape[0]/2),
-                                                                    int(primeraImagenGris.shape[1]/2):int(primeraImagenGris.shape[1])
-                                                                   ],
-                                                                   imagenGris[
-                                                                    0:int(imagenGris.shape[0]/2),
-                                                                    int(imagenGris.shape[1]/2):int(imagenGris.shape[1])
-                                                                   ],
-                                                                   esquinasIniciales2, None, winSize=(15, 15), maxLevel=2, criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
-    nuevasEsquinas3, estatus3, errores3 = cv2.calcOpticalFlowPyrLK(primeraImagenGris[
-                                                                    int(primeraImagenGris.shape[0]/2):int(primeraImagenGris.shape[0]),
-                                                                    0:int(primeraImagenGris.shape[1]/2)
-                                                                   ],
-                                                                   imagenGris[
-                                                                    int(imagenGris.shape[0]/2):int(imagenGris.shape[0]),
-                                                                    0:int(imagenGris.shape[1]/2)
-                                                                    ],
-                                                                   esquinasIniciales3, None, winSize=(15, 15), maxLevel=2, criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
-    nuevasEsquinas4, estatus4, errores4 = cv2.calcOpticalFlowPyrLK(primeraImagenGris[
-                                                                    int(primeraImagenGris.shape[0]/2):int(primeraImagenGris.shape[0]),
-                                                                    int(primeraImagenGris.shape[1]/2):int(primeraImagenGris.shape[1])
-                                                                    ],
-                                                                   imagenGris[
-                                                                    int(imagenGris.shape[0]/2):int(imagenGris.shape[0]),
-                                                                    int(imagenGris.shape[1]/2):int(imagenGris.shape[1])
-                                                                    ],
-                                                                   esquinasIniciales4, None, winSize=(15, 15), maxLevel=2, criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
+    nuevasEsquinas1, estatus1, errores1 = cv2.calcOpticalFlowPyrLK(primeraImagenGris1, imagenGris1, esquinasIniciales1, None, winSize=(15, 15), maxLevel=2, criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
+    nuevasEsquinas2, estatus2, errores2 = cv2.calcOpticalFlowPyrLK(primeraImagenGris2, imagenGris2, esquinasIniciales2, None, winSize=(15, 15), maxLevel=2, criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
+    nuevasEsquinas3, estatus3, errores3 = cv2.calcOpticalFlowPyrLK(primeraImagenGris3, imagenGris3, esquinasIniciales3, None, winSize=(15, 15), maxLevel=2, criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
+    nuevasEsquinas4, estatus4, errores4 = cv2.calcOpticalFlowPyrLK(primeraImagenGris4, imagenGris4, esquinasIniciales4, None, winSize=(15, 15), maxLevel=2, criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
 
+    """
     # Se seleccionan los mejores puntos clave de las esquinas antiguas mediante el vector 'status'
     buenasEsquinasIniciales1 = esquinasIniciales1[estatus1 == 1]
     buenasEsquinasIniciales2 = esquinasIniciales2[estatus2 == 1]
@@ -135,51 +157,45 @@ while True:
     buenasNuevasEsquinas4 = nuevasEsquinas4[estatus4 == 1]
 
     # Se dibuja el recorrido del flujo óptico
-    imagenDibujada1, mask1 = dibujarFlujoOptico(buenasNuevasEsquinas1, buenasEsquinasIniciales1,
-                                                0,
-                                                int(primeraImagenGris.shape[0]/2),
-                                                0,
-                                                int(primeraImagenGris.shape[1]/2),
-                                                imagen, primeraImagen)
-    imagenDibujada2, mask2 = dibujarFlujoOptico(buenasNuevasEsquinas2, buenasEsquinasIniciales2,
-                                                0,
-                                                int(primeraImagenGris.shape[0]/2),
-                                                int(primeraImagenGris.shape[1]/2),
-                                                int(primeraImagenGris.shape[1]),
-                                                imagen, primeraImagen)
-    imagenDibujada3, mask3 = dibujarFlujoOptico(buenasNuevasEsquinas3, buenasEsquinasIniciales3,
-                                                int(primeraImagenGris.shape[0]/2),
-                                                int(primeraImagenGris.shape[0]),
-                                                0,
-                                                int(imagenGris.shape[1]/2),
-                                                imagen, primeraImagen)
-    imagenDibujada4, mask4 = dibujarFlujoOptico(buenasNuevasEsquinas4, buenasEsquinasIniciales4,
-                                                int(primeraImagenGris.shape[0]/2),
-                                                int(primeraImagenGris.shape[0]),
-                                                int(primeraImagenGris.shape[1]/2),
-                                                int(primeraImagenGris.shape[1]),
-                                                imagen, primeraImagen)
+    imagenDibujada1, mask1 = dibujarFlujoOptico(buenasNuevasEsquinas1, buenasEsquinasIniciales1, imagen1)
+    imagenDibujada2, mask2 = dibujarFlujoOptico(buenasNuevasEsquinas2, buenasEsquinasIniciales2, imagen2)
+    imagenDibujada3, mask3 = dibujarFlujoOptico(buenasNuevasEsquinas3, buenasEsquinasIniciales3, imagen3)
+    imagenDibujada4, mask4 = dibujarFlujoOptico(buenasNuevasEsquinas4, buenasEsquinasIniciales4, imagen4)
 
     # Se aplica la máscara sobre la imagen
     imagenSalida1 = cv2.add(imagenDibujada1, mask1)
     imagenSalida2 = cv2.add(imagenDibujada2, mask2)
     imagenSalida3 = cv2.add(imagenDibujada3, mask3)
     imagenSalida4 = cv2.add(imagenDibujada4, mask4)
-
+    
     # Se muestra la imagen
-    cv2.imshow("Lucas-Kanade 1", imagenSalida1)
-    cv2.imshow("Lucas-Kanade 2", imagenSalida2)
-    cv2.imshow("Lucas-Kanade 3", imagenSalida3)
-    cv2.imshow("Lucas-Kanade 4", imagenSalida4)
+    cv2.imshow("Lucas-Kanade_ORB 1", imagenSalida1)
+    cv2.imshow("Lucas-Kanade_ORB 2", imagenSalida2)
+    cv2.imshow("Lucas-Kanade_ORB 3", imagenSalida3)
+    cv2.imshow("Lucas-Kanade_ORB 4", imagenSalida4)
+    """
 
-    if 0 in estatus1:
+    if 0 in estatus1 or 0 in estatus2 or 0 in estatus3 or 0 in estatus4:
         print("Movimiento")
-    if 0 in estatus2:
-        print("Movimiento")
-    if 0 in estatus3:
-        print("Movimiento")
-    if 0 in estatus4:
-        print("Movimiento")
+
+    # Si han pasado 15 minutos los puntos clave se renuevan
+    tiempoActual = getTime()
+    if tiempoActual - tiempoInicial >= 900000:
+    #if tiempoActual - tiempoInicial >= 60000:
+        # La imagen en gris de referencia pasa a ser la imagen actual
+        primeraImagenGris = cv2.cvtColor(imagen, cv2.COLOR_BGR2GRAY)
+
+        # Se sacan las esquinas de referencia
+        esquinasIniciales1 = procesarEsquinasInicialesSubimagen(primeraImagenGris, 0, int(primeraImagenGris.shape[0]/2), 0, int(primeraImagenGris.shape[1]/2))
+        esquinasIniciales2 = procesarEsquinasInicialesSubimagen(primeraImagenGris, 0, int(primeraImagenGris.shape[0]/2), int(primeraImagenGris.shape[1]/2), int(primeraImagenGris.shape[1]))
+        esquinasIniciales3 = procesarEsquinasInicialesSubimagen(primeraImagenGris, int(primeraImagenGris.shape[0]/2), int(primeraImagenGris.shape[0]), 0, int(primeraImagenGris.shape[1]/2))
+        esquinasIniciales4 = procesarEsquinasInicialesSubimagen(primeraImagenGris, int(primeraImagenGris.shape[0]/2), int(primeraImagenGris.shape[0]), int(primeraImagenGris.shape[1]/2), int(primeraImagenGris.shape[1]))
+
+        # Se calcula a partir de la imagen de referencia cuatro subimagenes
+        primeraImagenGris1 = primeraImagenGris[0:int(primeraImagenGris.shape[0]/2), 0:int(primeraImagenGris.shape[1]/2)]
+        primeraImagenGris2 = primeraImagenGris[0:int(primeraImagenGris.shape[0]/2), int(primeraImagenGris.shape[1]/2):int(primeraImagenGris.shape[1])]
+        primeraImagenGris3 = primeraImagenGris[int(primeraImagenGris.shape[0]/2):int(primeraImagenGris.shape[0]), 0:int(primeraImagenGris.shape[1]/2)]
+        primeraImagenGris4 = primeraImagenGris[int(primeraImagenGris.shape[0]/2):int(primeraImagenGris.shape[0]), int(primeraImagenGris.shape[1]/2):int(primeraImagenGris.shape[1])]
 
     # Pulsar 'q' para salir
     if cv2.waitKey(2) & 0xFF == ord('q'):
