@@ -46,6 +46,8 @@ def procesarEsquinasInicialesSubimagen(subimagen):
     [In]    y2: punto y final sobre el que se empieza la subdivision de la imagen
     [In]    imagen: imagen que se ha consumido de la cámara
     [In]    primeraImagen: imagen de referencia sobre la que se comparará la imagen consumida
+    [In]    es necesario pasarle la subimagen resultante conn los circulos dibujadaos para evitar problemas con el ámbito de la varaible
+    [In]    es necesario pasarle la máscara resultante conn los circulos dibujadaos para evitar problemas con el ámbito de la varaible
     [Out]   Subimagen de la imagen original con el flujo óptico dibujado
     [Out]   Máscara que hay que aplicar sobre la subimagen
 """
