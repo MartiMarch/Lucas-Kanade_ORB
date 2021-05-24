@@ -61,38 +61,6 @@ def dibujarFlujoOptico(buenasNuevasEsquinas, buenasEsquinasIniciales, imagen, su
 
     return subimagenDibujada, mask
 
-def compararDescriptores(descriptoresIniciales, imagen, orb):
-
-    # Se obtiene los descriptores de la imagen actual
-    _, descriptoresImagen = orb.detectAndCompute(imagen, mask=None)
-
-    # Se crea el comparador
-    comparador = cv2.BFMatcher()
-
-    # Se encuentran las similitudes
-    if type(descriptoresIniciales) == type(descriptoresImagen) and descriptoresIniciales.shape == descriptoresImagen.shape:
-
-        # Combinamos los descriptores con nsu parecido
-        comparaciones = comparador.match(descriptoresIniciales, descriptoresImagen)
-
-        """
-            Obtenemios todos aquellos descriptores cuya distancia sea menor a una cierta cantidad
-            
-            * Cuando se comparan dos descriptores la similitud viene dada por el parámetro distancia. Cuanto más grade sea esa
-            distáncia más grnade es la similitud. Si la longitud del descriptor de una imágen comparada con la otra supera cierto umbral, 
-            en este caso el 75%, entoces se considera que son iguales y se añade al vector.
-        """
-        print(len(comparaciones))
-        if len(comparaciones) % 2 == 0 and len(comparaciones) >= 2:
-            good = []
-            for m, n in comparaciones:
-                if m.distance < 0.75 * n.distance:
-                    good.append([m])
-
-        #print("Longitud de descriptoresIniciales: " + str(len(descriptoresIniciales)) + ", longitud de descriptoresImagen: " + str(len(descriptoresImagen)) + ", longitud de good[]: " + str(len(good)) + "\n")
-
-    return
-
 """ getTime
 
     Función utilizada para conocer el tiempo actual en milisegundos.
@@ -223,14 +191,9 @@ while True:
     cv2.imshow("Lucas-Kanade_ORB 3", imagenSalida3)
     cv2.imshow("Lucas-Kanade_ORB 4", imagenSalida4)
 
-
-    compararDescriptores(descriptores1, imagenGris1, orb)
-
-    """
     # Si algunos de los estatus esta a 0 significa que existe movimiento
     if 0 in estatus1 or 0 in estatus2 or 0 in estatus3 or 0 in estatus4:
         print("Movimiento")
-    """
 
     # Si han pasado 15 minutos los puntos clave se renuevan
     tiempoActual = getTime()
