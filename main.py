@@ -22,7 +22,7 @@ import time
 def procesarEsquinasInicialesSubimagen(subimagen):
 
     # Se obtienen los puntos claves
-    esquinasIniciales, descriptoresIniciales = orb.detectAndCompute(subimagen, mask=None)
+    esquinasIniciales = orb.detect(subimagen, mask=None)
 
     # Las esquinas iniciales de adaptan al formato correcto
     puntos = []
@@ -32,7 +32,7 @@ def procesarEsquinasInicialesSubimagen(subimagen):
     esquinasIniciales = puntos[0]
     esquinasIniciales = np.asarray(esquinasIniciales)
 
-    return esquinasIniciales, descriptoresIniciales
+    return esquinasIniciales
 
 """ dibujarFlujoOptico
     
@@ -94,10 +94,10 @@ primeraImagenGris4 = primeraImagenGris[int(primeraImagenGris.shape[0]/2):int(pri
 orb = cv2.ORB_create(100)
 
 # Se divide la primera imagen en cuatro
-esquinasIniciales1, descriptores1 = procesarEsquinasInicialesSubimagen(primeraImagenGris1)
-esquinasIniciales2, descriptores2 = procesarEsquinasInicialesSubimagen(primeraImagenGris2)
-esquinasIniciales3, descriptores3 = procesarEsquinasInicialesSubimagen(primeraImagenGris3)
-esquinasIniciales4, descriptores4 = procesarEsquinasInicialesSubimagen(primeraImagenGris4)
+esquinasIniciales1 = procesarEsquinasInicialesSubimagen(primeraImagenGris1)
+esquinasIniciales2 = procesarEsquinasInicialesSubimagen(primeraImagenGris2)
+esquinasIniciales3 = procesarEsquinasInicialesSubimagen(primeraImagenGris3)
+esquinasIniciales4 = procesarEsquinasInicialesSubimagen(primeraImagenGris4)
 
 # Se trata de un vector que representa un color aleatorio
 color = np.random.randint(0, 255, (100, 3))
