@@ -136,7 +136,7 @@ def obtenerEsquinasValidas():
 *** ------------------------------ """
 
 # Se abre la cámara
-camara = cv2.VideoCapture(2, cv2.CAP_DSHOW)
+camara = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
 # Se crea un orb
 orb = cv2.ORB_create(100)
@@ -241,7 +241,7 @@ while True:
 
     # Si algunos de los estatus esta a 0 significa que existe movimiento
     if 0 in estatus1 or 0 in estatus2 or 0 in estatus3 or 0 in estatus4:
-        print("Movimiento")
+        print("FO - Movimiento")
 
     # Si han pasado 15 minutos los puntos clave se renuevan
     tiempoActual = getTime()
